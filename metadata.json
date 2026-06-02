@@ -1,0 +1,6 @@
+{
+  "name": "Kids Story Reader & Illustrator",
+  "description": "An interactive storytelling app for children that reads stories aloud, highlights spoken words, offers custom AI story creators, and paints pages with magical, real-time illustration generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
