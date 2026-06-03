@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { Story, StoryPage } from '../types';
+import { InteractiveWord } from './InteractiveWord';
 import {
   X,
   Play,
@@ -18,7 +19,10 @@ import {
   ChevronRight,
   Sparkles,
   Palette,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react';
 
 interface BookViewerProps {
@@ -67,6 +71,8 @@ export function BookViewer({
   const [paintingError, setPaintingError] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState(LOADING_DIALOGS[0]);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const currentPage: StoryPage = story.pages[currentPageIdx] || story.pages[0];
 
@@ -192,9 +198,21 @@ export function BookViewer({
     if (!currentPage || !currentPage.text) return null;
 
     if (!playback.isPlaying || playback.currentWordIndex === -1 || wordIndices.length === 0) {
+      const wordsAndSpaces = currentPage.text.split(/(\s+)/);
       return (
         <p className="text-xl md:text-2xl font-bold font-sans text-slate-700 leading-relaxed max-w-prose">
-          {currentPage.text}
+          {wordsAndSpaces.map((chunk, index) => {
+            if (/^\s+$/.test(chunk)) {
+              return <span key={`resting-space-${index}`}>{chunk}</span>;
+            }
+            return (
+              <InteractiveWord
+                key={`resting-word-${index}`}
+                word={chunk}
+                originalText={chunk}
+              />
+            );
+          })}
         </p>
       );
     }
@@ -205,15 +223,26 @@ export function BookViewer({
     wordIndices.forEach((item, index) => {
       // Add standard text leading to the word
       if (item.start > lastIndex) {
-        elements.push(
-          <span key={`text-pre-${index}`} className="text-slate-700">
-            {currentPage.text.substring(lastIndex, item.start)}
-          </span>
-        );
+        const leadingText = currentPage.text.substring(lastIndex, item.start);
+        const leadingChunks = leadingText.split(/(\s+)/);
+        leadingChunks.forEach((chunk, chunkIdx) => {
+          if (/^\s+$/.test(chunk)) {
+            elements.push(<span key={`text-pre-${index}-space-${chunkIdx}`}>{chunk}</span>);
+          } else {
+            elements.push(
+              <InteractiveWord
+                key={`text-pre-${index}-word-${chunkIdx}`}
+                word={chunk}
+                originalText={chunk}
+              />
+            );
+          }
+        });
       }
 
       // Add highlighted word with bounce micro-animation
       const isWordActive = index === playback.currentWordIndex;
+      const wordText = currentPage.text.substring(item.start, item.end);
       elements.push(
         <motion.span
           key={`word-${index}`}
@@ -222,10 +251,10 @@ export function BookViewer({
           className={`inline-block px-1 py-0.5 rounded-lg font-black transition duration-150 ${
             isWordActive
               ? 'bg-yellow-300 text-slate-900 border-b-3 border-yellow-500 shadow-md ring-2 ring-yellow-200'
-              : 'text-indigo-900'
+              : 'text-indigo-900 font-extrabold'
           }`}
         >
-          {currentPage.text.substring(item.start, item.end)}
+          <InteractiveWord word={wordText} originalText={wordText} />
         </motion.span>
       );
 
@@ -234,15 +263,25 @@ export function BookViewer({
 
     // Add tailing characters
     if (lastIndex < currentPage.text.length) {
-      elements.push(
-        <span key="text-post" className="text-slate-700">
-          {currentPage.text.substring(lastIndex)}
-        </span>
-      );
+      const trailingText = currentPage.text.substring(lastIndex);
+      const trailingChunks = trailingText.split(/(\s+)/);
+      trailingChunks.forEach((chunk, chunkIdx) => {
+        if (/^\s+$/.test(chunk)) {
+          elements.push(<span key={`text-post-space-${chunkIdx}`}>{chunk}</span>);
+        } else {
+          elements.push(
+            <InteractiveWord
+              key={`text-post-word-${chunkIdx}`}
+              word={chunk}
+              originalText={chunk}
+            />
+          );
+        }
+      });
     }
 
     return (
-      <div className="text-xl md:text-2xl font-bold font-sans leading-relaxed tracking-wide text-slate-700 space-x-1">
+      <div className="text-xl md:text-2xl font-bold font-sans leading-relaxed tracking-wide text-slate-700 space-x-1 flex flex-wrap justify-center items-center">
         {elements}
       </div>
     );
@@ -300,16 +339,34 @@ export function BookViewer({
             {/* Real Illustration Container */}
             <AnimatePresence mode="wait">
               {currentPage.illustrationUrl && !isPainting ? (
-                <motion.img
-                  key={currentPage.illustrationUrl}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.02 }}
-                  src={currentPage.illustrationUrl}
-                  alt={`Illustration for page ${currentPageIdx + 1}`}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                />
+                <React.Fragment>
+                  <motion.img
+                    key={currentPage.illustrationUrl}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.02 }}
+                    src={currentPage.illustrationUrl}
+                    alt={`Illustration for page ${currentPageIdx + 1}`}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Share button overlay */}
+                  <div className="absolute top-3 right-3 z-30">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        setIsShareOpen(true);
+                        setIsCopied(false);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/95 text-indigo-700 hover:text-indigo-800 font-extrabold text-xs rounded-full shadow-md backdrop-blur-xs select-none cursor-pointer border border-indigo-100 transition duration-150"
+                      title="Share this dynamic masterpiece!"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-indigo-600 font-black" />
+                      <span>Share Art</span>
+                    </motion.button>
+                  </div>
+                </React.Fragment>
               ) : (
                 <div className="flex flex-col items-center justify-center p-6 text-center text-slate-400">
                   <ImageIcon className="w-10 h-10 text-slate-300 mb-2" />
@@ -544,6 +601,165 @@ export function BookViewer({
           </button>
         )}
       </div>
+
+      {/* Share Masterpiece Dialog */}
+      <AnimatePresence>
+        {isShareOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-indigo-100 flex flex-col gap-6 relative"
+            >
+              <button
+                onClick={() => setIsShareOpen(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center">
+                <span className="text-3xl">🎨</span>
+                <h3 className="font-heading text-xl md:text-2xl font-black text-slate-800 tracking-tight mt-2">
+                  Share Your Masterpiece!
+                </h3>
+                <p className="text-slate-500 text-xs mt-1 max-w-sm mx-auto">
+                  Show off the beautiful illustration you custom-painted for <strong className="text-indigo-600">"{story.title}"</strong>!
+                </p>
+              </div>
+
+              {/* Share content row */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 bg-indigo-50/30 p-4 rounded-2xl border border-indigo-100/40">
+                {/* Visual Thumbnail */}
+                <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-white shadow-md shrink-0 bg-slate-50 relative group">
+                  <img
+                    src={currentPage.illustrationUrl || ''}
+                    alt="Preview share"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/10" />
+                </div>
+
+                {/* QR Code Container */}
+                <div className="flex flex-col items-center text-center shrink-0">
+                  <div className="p-2 bg-white rounded-xl shadow-xs border border-indigo-100/60">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100&color=4f46e5&data=${encodeURIComponent(
+                        typeof window !== 'undefined'
+                          ? `${window.location.origin}?shareImg=${encodeURIComponent(
+                              currentPage.illustrationUrl || ''
+                            )}&title=${encodeURIComponent(story.title)}&page=${currentPage.pageNumber}&charName=${encodeURIComponent(
+                              story.heroName || ''
+                            )}`
+                          : ''
+                      )}`}
+                      alt="QR Code to Share Illustration"
+                      className="w-[90px] h-[90px] block"
+                      title="Scan to view on your mobile phone!"
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1.5 animate-pulse">
+                    Scan with Phone 📱
+                  </span>
+                </div>
+
+                {/* Descriptive Helper */}
+                <div className="flex-1 text-center sm:text-left">
+                  <h4 className="text-xs font-black text-slate-700">Scan or Send!</h4>
+                  <p className="text-slate-500 text-[10px] sm:text-xs leading-normal mt-1">
+                    Ask Mom, Dad, or a friend to scan the QR code, or send them the magical link below to invite them to your art room!
+                  </p>
+                </div>
+              </div>
+
+              {/* URL interactive input field */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider pl-1">
+                  Fairytale Share Link
+                </span>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={
+                      typeof window !== 'undefined'
+                        ? `${window.location.origin}?shareImg=${encodeURIComponent(
+                            currentPage.illustrationUrl || ''
+                          )}&title=${encodeURIComponent(story.title)}&page=${currentPage.pageNumber}&charName=${encodeURIComponent(
+                            story.heroName || ''
+                          )}`
+                        : ''
+                    }
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    className="flex-1 bg-slate-50 border-2 border-slate-200 focus:border-indigo-400 rounded-xl px-3 py-2 text-xs font-mono text-slate-600 focus:outline-hidden"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        const url = `${window.location.origin}?shareImg=${encodeURIComponent(
+                          currentPage.illustrationUrl || ''
+                        )}&title=${encodeURIComponent(story.title)}&page=${currentPage.pageNumber}&charName=${encodeURIComponent(
+                          story.heroName || ''
+                        )}`;
+                        navigator.clipboard.writeText(url);
+                        setIsCopied(true);
+                        setTimeout(() => setIsCopied(false), 2000);
+                      }
+                    }}
+                    className={`px-4.5 py-2.5 rounded-xl text-white font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm relative overflow-hidden transition-colors ${
+                      isCopied ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
+                  >
+                    <AnimatePresence mode="wait">
+                      {isCopied ? (
+                        <motion.div
+                          key="copied"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="flex items-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Copied! 🪄</span>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="copy"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="flex items-center gap-1"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Link</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Action row with sweet note */}
+              <div className="flex justify-between items-center bg-slate-50 p-3.5 rounded-2xl border border-slate-100 mt-2">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                  🧸 Parent Approved • Kid-Safe Viewport
+                </span>
+                <button
+                  onClick={() => setIsShareOpen(false)}
+                  className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-xs rounded-lg cursor-pointer transition"
+                >
+                  Close Room
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

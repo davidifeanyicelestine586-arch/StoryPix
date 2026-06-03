@@ -32,6 +32,34 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [loadingPhase, setLoadingPhase] = useState(MAGIC_LOADING_PHASES[0]);
+  const [sharedArtwork, setSharedArtwork] = useState<{
+    imageUrl: string;
+    title: string;
+    page: number;
+    charName?: string;
+  } | null>(null);
+
+  // Parse share parameters on startup
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const shareImg = urlParams.get('shareImg');
+      const title = urlParams.get('title');
+      const page = urlParams.get('page');
+      const charName = urlParams.get('charName');
+
+      if (shareImg && title) {
+        setSharedArtwork({
+          imageUrl: shareImg,
+          title: title,
+          page: parseInt(page || '1', 10),
+          charName: charName || undefined,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to parse share parameters:', e);
+    }
+  }, []);
 
   // Load reading progress from localStorage on startup
   useEffect(() => {
@@ -258,6 +286,116 @@ export default function App() {
       setIsGenerating(false);
     }
   };
+
+  // Shared Artwork showroom page
+  if (sharedArtwork) {
+    return (
+      <div className="min-h-screen bg-gradient-to-tr from-amber-50 via-indigo-50/30 to-amber-100/50 flex flex-col justify-between p-4 md:p-8 font-sans text-slate-800">
+        <header className="max-w-2xl mx-auto w-full flex justify-between items-center bg-white/75 backdrop-blur-xs px-4 py-3 rounded-2xl border border-white shadow-3xs mb-8">
+          <div className="flex items-center gap-2">
+            <span className="text-xl animate-spin" style={{ animationDuration: '3s' }}>🪄</span>
+            <div>
+              <h1 className="font-heading font-black text-slate-800 text-xs md:text-sm leading-tight">
+                Magical Bookworm
+              </h1>
+              <p className="text-[9px] text-indigo-600 font-bold uppercase tracking-wider">
+                Fairytale Art Studio
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setSharedArtwork(null);
+              window.history.replaceState({}, document.title, window.location.origin);
+              setActiveView('shelf');
+            }}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition duration-150 cursor-pointer"
+          >
+            Go to Bookshelf 📚
+          </button>
+        </header>
+
+        <main className="max-w-xl mx-auto w-full flex-1 flex flex-col items-center justify-center py-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full bg-white p-5 md:p-7 rounded-3xl border-8 border-amber-800 shadow-2xl flex flex-col gap-5 relative animate-fade-in"
+          >
+            <div className="absolute top-1.5 left-6 right-6 h-1 bg-amber-950/20 blur-[1px] rounded-full" />
+
+            {/* Framed Canvas */}
+            <div className="relative aspect-4/3 w-full bg-slate-100 rounded-xl overflow-hidden border-4 border-amber-950/90 shadow-inner flex items-center justify-center animate-fade-in">
+              <img
+                src={sharedArtwork.imageUrl}
+                alt={sharedArtwork.title || "Shared Artwork"}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-transparent pointer-events-none" />
+              
+              <div className="absolute bottom-3 right-3 px-2.5 py-1 bg-amber-400 text-amber-950 font-black text-[9px] uppercase tracking-wider rounded-md border border-amber-300 shadow-xs">
+                ✨ Kid Original Art
+              </div>
+            </div>
+
+            {/* Art Details Tag */}
+            <div className="text-center mt-1 p-4 bg-amber-50/50 rounded-2xl border border-amber-100/60">
+              <span className="px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-950 text-[9px] uppercase font-black tracking-wider">
+                Painted Masterpiece
+              </span>
+              <h2 className="font-heading text-base md:text-lg font-black text-slate-800 tracking-tight mt-1.5">
+                "{sharedArtwork.title}"
+              </h2>
+              <p className="text-[11px] text-slate-500 font-bold mt-0.5">
+                Custom illustration created on Page {sharedArtwork.page}
+              </p>
+              {sharedArtwork.charName && (
+                <p className="text-[10px] text-indigo-700 font-black font-mono mt-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100/50 inline-block rounded-full">
+                  🦸 Featuring: {sharedArtwork.charName}
+                </p>
+              )}
+            </div>
+
+            {/* CTA Option Deck */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setSharedArtwork(null);
+                  window.history.replaceState({}, document.title, window.location.origin);
+                  setActiveView('creator');
+                }}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-600 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md cursor-pointer transition"
+              >
+                <span>🪄</span>
+                <span>Paint My Own Story!</span>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setSharedArtwork(null);
+                  window.history.replaceState({}, document.title, window.location.origin);
+                  setActiveView('shelf');
+                }}
+                className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl cursor-pointer transition"
+              >
+                <span>📚</span>
+                <span>Browse Bedtime Stories</span>
+              </motion.button>
+            </div>
+          </motion.div>
+        </main>
+
+        <footer className="max-w-md mx-auto w-full text-center text-slate-400 text-[10px] pt-8">
+          <p>Created securely via server-side generative artificial intelligence.</p>
+          <p className="text-slate-300 mt-0.5">Magical Bookworm Art Studio • Parent Approved & Kid-Safe</p>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div id="ai-storybook-castle" className="min-h-screen bg-slate-50 flex flex-col justify-between font-sans text-slate-800">
