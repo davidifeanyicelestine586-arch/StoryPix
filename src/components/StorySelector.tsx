@@ -7,6 +7,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, BookOpen, Trash2, Library, Wand2, Heart } from 'lucide-react';
 import { Story, ReadingProgress } from '../types';
+import { ReadingDashboard } from './ReadingDashboard';
 
 interface StorySelectorProps {
   stories: Story[];
@@ -141,6 +142,9 @@ export function StorySelector({
           </p>
         </div>
       </div>
+
+      {/* Reading Statistics & Progress Chart Dashboard */}
+      <ReadingDashboard stories={stories} readingProgress={readingProgress} />
 
       {/* Dynamic Filter view selector tabs */}
       <div className="flex justify-center gap-3.5 mb-10 bg-slate-200/40 p-1.5 rounded-2xl max-w-xs mx-auto border border-slate-200/50">
