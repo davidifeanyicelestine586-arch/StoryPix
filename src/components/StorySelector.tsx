@@ -4,8 +4,8 @@
  */
 
 import React from 'react';
-import { motion } from 'motion/react';
-import { Sparkles, BookOpen, Trash2, Library, Wand2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Sparkles, BookOpen, Trash2, Library, Wand2, Heart } from 'lucide-react';
 import { Story, ReadingProgress } from '../types';
 
 interface StorySelectorProps {
@@ -15,6 +15,8 @@ interface StorySelectorProps {
   onDeleteStory: (id: string, e: React.MouseEvent) => void;
   readingProgress: ReadingProgress;
   recentStoryIds: string[];
+  favoriteStoryIds?: string[];
+  onToggleFavorite: (id: string, e: React.MouseEvent) => void;
 }
 
 function renderProgressCircle(story: Story, progress: { highestPageRead: number; isFinished: boolean }) {
@@ -99,7 +101,11 @@ export function StorySelector({
   onDeleteStory,
   readingProgress,
   recentStoryIds,
+  favoriteStoryIds = [],
+  onToggleFavorite,
 }: StorySelectorProps) {
+  const [activeFilter, setActiveFilter] = React.useState<'all' | 'favorites'>('all');
+
   // Group categories
   const preloaded = stories.filter((s) => !s.isAiGenerated);
   const custom = stories.filter((s) => s.isAiGenerated);
@@ -109,6 +115,8 @@ export function StorySelector({
     .map((id) => stories.find((s) => s.id === id))
     .filter((story): story is Story => !!story)
     .slice(0, 3);
+
+  const favoritedStories = stories.filter((s) => favoriteStoryIds.includes(s.id));
 
   return (
     <div id="bookshelf-panel" className="max-w-6xl mx-auto px-4 py-8">
@@ -134,10 +142,36 @@ export function StorySelector({
         </div>
       </div>
 
+      {/* Dynamic Filter view selector tabs */}
+      <div className="flex justify-center gap-3.5 mb-10 bg-slate-200/40 p-1.5 rounded-2xl max-w-xs mx-auto border border-slate-200/50">
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={`flex-1 py-1.5 px-3 rounded-xl font-extrabold text-xs md:text-sm flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer select-none ${
+            activeFilter === 'all'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-white hover:text-indigo-600'
+          }`}
+        >
+          <span>🏰</span>
+          <span>All Stories</span>
+        </button>
+        <button
+          onClick={() => setActiveFilter('favorites')}
+          className={`flex-1 py-1.5 px-3 rounded-xl font-extrabold text-xs md:text-sm flex items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer select-none ${
+            activeFilter === 'favorites'
+              ? 'bg-rose-500 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-white hover:text-rose-500'
+          }`}
+        >
+          <Heart className={`w-3.5 h-3.5 ${favoriteStoryIds.length > 0 ? 'fill-rose-500 text-white' : ''}`} />
+          <span>Favorites ({favoriteStoryIds.length})</span>
+        </button>
+      </div>
+
       {/* Grid of Books */}
       <div className="space-y-12">
         {/* Recent History Carousel */}
-        {recentStories.length > 0 && (
+        {activeFilter === 'all' && recentStories.length > 0 && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50/50 p-6 rounded-3xl border border-amber-100/70 shadow-2xs">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -154,6 +188,7 @@ export function StorySelector({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {recentStories.map((story) => {
                 const progress = readingProgress[story.id] || { highestPageRead: 0, isFinished: false };
+                const isFav = favoriteStoryIds.includes(story.id);
                 return (
                   <motion.div
                     key={`recent-${story.id}`}
@@ -171,7 +206,7 @@ export function StorySelector({
                       <div className="absolute inset-0 bg-black/5" />
                     </div>
 
-                    <div className="flex-1 min-w-0 pr-6">
+                    <div className="flex-1 min-w-0 pr-16">
                       <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
                         <span className="truncate max-w-[80px]">{story.heroType}</span>
                         <span>•</span>
@@ -185,6 +220,19 @@ export function StorySelector({
                       </p>
                     </div>
 
+                    <div className="absolute right-12 top-1/2 -translate-y-1/2 z-20">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavorite(story.id, e);
+                        }}
+                        className="p-1.5 rounded-full hover:bg-rose-50 text-rose-500 transition duration-150 cursor-pointer select-none"
+                        title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                      >
+                        <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : 'text-slate-300 hover:text-rose-500'}`} />
+                      </button>
+                    </div>
+
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                       {renderProgressCircle(story, progress)}
                     </div>
@@ -196,7 +244,7 @@ export function StorySelector({
         )}
 
         {/* Custom Magical Creations */}
-        {custom.length > 0 && (
+        {activeFilter === 'all' && custom.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-6">
               <span className="text-2xl">✨</span>
@@ -209,46 +257,60 @@ export function StorySelector({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {custom.map((story) => (
-                <motion.div
-                  key={story.id}
-                  whileHover={{ y: -6, scale: 1.02 }}
-                  className="group bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between"
-                >
-                  <div
-                    onClick={() => onSelectStory(story)}
-                    className="cursor-pointer"
+              {custom.map((story) => {
+                const isFav = favoriteStoryIds.includes(story.id);
+                return (
+                  <motion.div
+                    key={story.id}
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    className="group bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between"
                   >
-                    <div className="relative aspect-video bg-slate-100 overflow-hidden">
-                      <img
-                        src={story.coverImage}
-                        alt={story.title}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border border-indigo-400">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        AI SPELL
-                      </div>
-                      <div className="absolute top-2.5 right-2.5 z-10">
-                        {renderProgressCircle(story, readingProgress[story.id] || { highestPageRead: 0, isFinished: false })}
-                      </div>
-                    </div>
+                    <div
+                      onClick={() => onSelectStory(story)}
+                      className="cursor-pointer"
+                    >
+                      <div className="relative aspect-video bg-slate-100 overflow-hidden">
+                        <img
+                          src={story.coverImage}
+                          alt={story.title}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border border-indigo-400">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          AI SPELL
+                        </div>
+                        <div className="absolute top-2.5 right-2.5 z-10">
+                          {renderProgressCircle(story, readingProgress[story.id] || { highestPageRead: 0, isFinished: false })}
+                        </div>
 
-                    <div className="p-4">
-                      <div className="flex gap-2 items-center text-xs font-bold text-slate-400 mb-1">
-                        <span>{story.heroType}</span>
-                        <span>•</span>
-                        <span>{story.style}</span>
+                        {/* Heart Button overlay */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite(story.id, e);
+                          }}
+                          className="absolute bottom-2.5 right-2.5 z-20 p-2 bg-white/95 hover:bg-white text-rose-500 hover:text-rose-600 rounded-full shadow-md backdrop-blur-xs transition duration-150 cursor-pointer border border-rose-50"
+                          title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                        >
+                          <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : 'text-slate-400 hover:text-rose-500'}`} />
+                        </button>
                       </div>
-                      <h3 className="font-heading font-black text-slate-800 text-base leading-tight group-hover:text-indigo-600 transition">
-                        {story.title}
-                      </h3>
-                      <p className="text-slate-500 text-xs mt-1.5 line-clamp-2 leading-relaxed">
-                        {story.description}
-                      </p>
+
+                      <div className="p-4">
+                        <div className="flex gap-2 items-center text-xs font-bold text-slate-400 mb-1">
+                          <span>{story.heroType}</span>
+                          <span>•</span>
+                          <span>{story.style}</span>
+                        </div>
+                        <h3 className="font-heading font-black text-slate-800 text-base leading-tight group-hover:text-indigo-600 transition">
+                          {story.title}
+                        </h3>
+                        <p className="text-slate-500 text-xs mt-1.5 line-clamp-2 leading-relaxed">
+                          {story.description}
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
                   <div className="p-3 border-t border-slate-50 bg-slate-50 flex items-center justify-between">
                     <button
@@ -270,96 +332,242 @@ export function StorySelector({
                     </button>
                   </div>
                 </motion.div>
-              ))}
+              ); })}
             </div>
           </div>
         )}
 
         {/* Regular Treasury Stories */}
-        <div>
-          <div className="flex items-center gap-2 mb-6">
-            <span className="text-2xl">📚</span>
-            <h2 className="font-heading text-2xl font-bold text-slate-800 tracking-tight">
-              Preloaded Treasury Bookshelves
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold font-mono">
-              {preloaded.length}
-            </span>
-          </div>
+        {activeFilter === 'all' && (
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <span className="text-2xl">📚</span>
+              <h2 className="font-heading text-2xl font-bold text-slate-800 tracking-tight">
+                Preloaded Treasury Bookshelves
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold font-mono">
+                {preloaded.length}
+              </span>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {/* BIG Magic Storymaker Card */}
-            <motion.div
-              whileHover={{ y: -6, scale: 1.02 }}
-              onClick={onCreateNewStory}
-              className="bg-indigo-50/50 rounded-2xl overflow-hidden border-2 border-dashed border-indigo-300 shadow-xs cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition duration-200 flex flex-col justify-center items-center text-center p-6 h-full min-h-[290px]"
-            >
-              <div className="w-14 h-14 rounded-full bg-indigo-500 text-white flex items-center justify-center mb-4 shadow-sm animate-pulse">
-                <Wand2 className="w-7 h-7" />
-              </div>
-              <p className="font-heading text-lg font-black text-indigo-900">
-                Spellbind a Custom Story
-              </p>
-              <p className="text-slate-500 text-xs max-w-[200px] mt-2 leading-relaxed">
-                Choose a custom hero, world, and style to write an original fairytale instantly.
-              </p>
-            </motion.div>
-
-            {preloaded.map((story) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* BIG Magic Storymaker Card */}
               <motion.div
-                key={story.id}
                 whileHover={{ y: -6, scale: 1.02 }}
-                onClick={() => onSelectStory(story)}
-                className="group bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between cursor-pointer"
+                onClick={onCreateNewStory}
+                className="bg-indigo-50/50 rounded-2xl overflow-hidden border-2 border-dashed border-indigo-300 shadow-xs cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition duration-200 flex flex-col justify-center items-center text-center p-6 h-full min-h-[290px]"
               >
-                <div>
-                  <div className="relative aspect-video bg-slate-100 overflow-hidden">
-                    <img
-                      src={story.coverImage}
-                      alt={story.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-xl bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border border-teal-400">
-                      <Library className="w-2.5 h-2.5" />
-                      Treasury
-                    </div>
-                    <div className="absolute top-2.5 right-2.5 z-10">
-                      {renderProgressCircle(story, readingProgress[story.id] || { highestPageRead: 0, isFinished: false })}
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex gap-2 items-center text-xs font-bold text-slate-400 mb-1">
-                      <span>{story.heroType}</span>
-                      <span>•</span>
-                      <span>{story.style}</span>
-                    </div>
-                    <h3 className="font-heading font-black text-slate-800 text-base leading-tight group-hover:text-indigo-600 transition">
-                      {story.title}
-                    </h3>
-                    <p className="text-slate-500 text-xs mt-1.5 line-clamp-2 leading-relaxed">
-                      {story.description}
-                    </p>
-                  </div>
+                <div className="w-14 h-14 rounded-full bg-indigo-500 text-white flex items-center justify-center mb-4 shadow-sm animate-pulse">
+                  <Wand2 className="w-7 h-7" />
                 </div>
-
-                <div className="p-3 border-t border-slate-50 bg-slate-50 flex items-center justify-between">
-                  <span className="text-[10px] px-2 py-0.5 font-bold font-sans tracking-wide rounded-full bg-slate-200 text-slate-600 uppercase">
-                    Read-Aloud
-                  </span>
-                  <button
-                    id={`open-${story.id}`}
-                    className="flex items-center gap-1 text-xs font-black text-indigo-600 hover:text-indigo-800"
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    Open Story
-                  </button>
-                </div>
+                <p className="font-heading text-lg font-black text-indigo-900">
+                  Spellbind a Custom Story
+                </p>
+                <p className="text-slate-500 text-xs max-w-[200px] mt-2 leading-relaxed">
+                  Choose a custom hero, world, and style to write an original fairytale instantly.
+                </p>
               </motion.div>
-            ))}
+
+              {preloaded.map((story) => {
+                const isFav = favoriteStoryIds.includes(story.id);
+                return (
+                  <motion.div
+                    key={story.id}
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    className="group bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between"
+                  >
+                    <div onClick={() => onSelectStory(story)} className="cursor-pointer">
+                      <div className="relative aspect-video bg-slate-100 overflow-hidden">
+                        <img
+                          src={story.coverImage}
+                          alt={story.title}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-xl bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border border-teal-400">
+                          <Library className="w-2.5 h-2.5" />
+                          Treasury
+                        </div>
+                        <div className="absolute top-2.5 right-2.5 z-10">
+                          {renderProgressCircle(story, readingProgress[story.id] || { highestPageRead: 0, isFinished: false })}
+                        </div>
+
+                        {/* Heart Button overlay */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite(story.id, e);
+                          }}
+                          className="absolute bottom-2.5 right-2.5 z-20 p-2 bg-white/95 hover:bg-white text-rose-500 hover:text-rose-600 rounded-full shadow-md backdrop-blur-xs transition duration-150 cursor-pointer border border-rose-50 animate-fade-in"
+                          title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                        >
+                          <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : 'text-slate-400 hover:text-rose-500'}`} />
+                        </button>
+                      </div>
+
+                      <div className="p-4">
+                        <div className="flex gap-2 items-center text-xs font-bold text-slate-400 mb-1">
+                          <span>{story.heroType}</span>
+                          <span>•</span>
+                          <span>{story.style}</span>
+                        </div>
+                        <h3 className="font-heading font-black text-slate-800 text-base leading-tight group-hover:text-indigo-600 transition">
+                          {story.title}
+                        </h3>
+                        <p className="text-slate-500 text-xs mt-1.5 line-clamp-2 leading-relaxed">
+                          {story.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 border-t border-slate-50 bg-slate-50 flex items-center justify-between">
+                      <span className="text-[10px] px-2 py-0.5 font-bold font-sans tracking-wide rounded-full bg-slate-200 text-slate-600 uppercase">
+                        Read-Aloud
+                      </span>
+                      <button
+                        id={`open-${story.id}`}
+                        onClick={() => onSelectStory(story)}
+                        className="flex items-center gap-1 text-xs font-black text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        Open Story
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* My Favorites Filter View Grid */}
+        {activeFilter === 'favorites' && (
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <span className="text-2xl">💖</span>
+              <h2 className="font-heading text-2xl font-bold text-indigo-900 tracking-tight animate-fade-in">
+                My Favorite Bookshelf
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold font-mono">
+                {favoritedStories.length}
+              </span>
+            </div>
+
+            {favoritedStories.length === 0 ? (
+              <div className="text-center py-16 px-6 bg-white border border-dashed border-rose-200 rounded-3xl max-w-sm mx-auto my-6 shadow-2xs">
+                <span className="text-5xl animate-bounce inline-block mb-3">💖</span>
+                <h3 className="font-heading text-base font-black text-slate-800">Your Magic Chest is Empty!</h3>
+                <p className="text-slate-500 text-xs mt-2 leading-relaxed">
+                  Tap the heart icon on any story cover to save your most-loved fairytales here so they're always ready for bedtime!
+                </p>
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className="mt-5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold rounded-full shadow-xs cursor-pointer transition duration-150"
+                >
+                  Let's find some fairytales! 🏰
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {favoritedStories.map((story) => {
+                  const isFav = favoriteStoryIds.includes(story.id);
+                  const progress = readingProgress[story.id] || { highestPageRead: 0, isFinished: false };
+                  return (
+                    <motion.div
+                      key={`fav-${story.id}`}
+                      whileHover={{ y: -6, scale: 1.02 }}
+                      className="group bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="relative aspect-video bg-slate-100 overflow-hidden">
+                          <img
+                            src={story.coverImage}
+                            alt={story.title}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                          />
+                          
+                          <div className={`absolute top-2.5 left-2.5 px-2.5 py-1 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1 border ${
+                            story.isAiGenerated 
+                              ? 'bg-indigo-600 border-indigo-400' 
+                              : 'bg-teal-500 border-teal-400'
+                          }`}>
+                            {story.isAiGenerated ? <Sparkles className="w-2.5 h-2.5" /> : <Library className="w-2.5 h-2.5" />}
+                            {story.isAiGenerated ? 'AI Spell' : 'Treasury'}
+                          </div>
+
+                          <div className="absolute top-2.5 right-2.5 z-10">
+                            {renderProgressCircle(story, progress)}
+                          </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleFavorite(story.id, e);
+                            }}
+                            className="absolute bottom-2.5 right-2.5 z-20 p-2 bg-white/95 hover:bg-white text-rose-500 hover:text-rose-600 rounded-full shadow-md backdrop-blur-xs transition duration-150 cursor-pointer border border-rose-50"
+                            title="Remove from Favorites"
+                          >
+                            <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                          </button>
+                        </div>
+
+                        <div className="p-4 cursor-pointer" onClick={() => onSelectStory(story)}>
+                          <div className="flex gap-2 items-center text-xs font-bold text-slate-400 mb-1">
+                            <span>{story.heroType}</span>
+                            <span>•</span>
+                            <span>{story.style}</span>
+                          </div>
+                          <h3 className="font-heading font-black text-slate-800 text-sm md:text-base leading-tight group-hover:text-indigo-600 transition truncate">
+                            {story.title}
+                          </h3>
+                          <p className="text-slate-500 text-xs mt-1.5 line-clamp-2 leading-relaxed">
+                            {story.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 border-t border-slate-50 bg-slate-50 flex items-center justify-between">
+                        {story.isAiGenerated ? (
+                          <>
+                            <button
+                              onClick={() => onSelectStory(story)}
+                              className="flex items-center gap-1 text-xs font-black text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                            >
+                              <BookOpen className="w-3.5 h-3.5" />
+                              Open Story
+                            </button>
+
+                            <button
+                              onClick={(e) => onDeleteStory(story.id, e)}
+                              className="p-1 text-rose-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                              title="Erase Storybook"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] px-2 py-0.5 font-bold font-sans tracking-wide rounded-full bg-slate-200 text-slate-600 uppercase">
+                              Read-Aloud
+                            </span>
+                            <button
+                              onClick={() => onSelectStory(story)}
+                              className="flex items-center gap-1 text-xs font-black text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                            >
+                              <BookOpen className="w-3.5 h-3.5" />
+                              Open Story
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

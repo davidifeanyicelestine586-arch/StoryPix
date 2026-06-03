@@ -38,6 +38,7 @@ export default function App() {
     page: number;
     charName?: string;
   } | null>(null);
+  const [favoriteStoryIds, setFavoriteStoryIds] = useState<string[]>([]);
 
   // Parse share parameters on startup
   useEffect(() => {
@@ -58,6 +59,18 @@ export default function App() {
       }
     } catch (e) {
       console.error('Failed to parse share parameters:', e);
+    }
+  }, []);
+
+  // Load favorite story ids from localStorage on startup
+  useEffect(() => {
+    try {
+      const storedFavorites = localStorage.getItem('kids-story-favorites');
+      if (storedFavorites) {
+        setFavoriteStoryIds(JSON.parse(storedFavorites));
+      }
+    } catch (e) {
+      console.error('Failed to load local favorites:', e);
     }
   }, []);
 
@@ -157,6 +170,23 @@ export default function App() {
     const filtered = stories.filter((s) => s.id !== id);
     setStories(filtered);
     saveStoriesToLocal(filtered);
+  };
+
+  // Handle toggle favorite story
+  const handleToggleFavorite = (storyId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavoriteStoryIds((prev) => {
+      const isFav = prev.includes(storyId);
+      const updated = isFav
+        ? prev.filter((id) => id !== storyId)
+        : [...prev, storyId];
+      try {
+        localStorage.setItem('kids-story-favorites', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save favorites:', e);
+      }
+      return updated;
+    });
   };
 
   // Callback to update custom illustrations in story state and save
@@ -467,6 +497,8 @@ export default function App() {
                 onDeleteStory={handleDeleteStory}
                 readingProgress={readingProgress}
                 recentStoryIds={recentStoryIds}
+                favoriteStoryIds={favoriteStoryIds}
+                onToggleFavorite={handleToggleFavorite}
               />
             </motion.div>
           )}

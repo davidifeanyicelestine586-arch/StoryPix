@@ -23,7 +23,10 @@ import {
   Share2,
   Copy,
   Check,
-  Download
+  Download,
+  Trophy,
+  Star,
+  Award
 } from 'lucide-react';
 
 interface BookViewerProps {
@@ -75,6 +78,7 @@ export function BookViewer({
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const currentPage: StoryPage = story.pages[currentPageIdx] || story.pages[0];
 
@@ -144,7 +148,7 @@ export function BookViewer({
 
   const handleFinishBook = () => {
     onUpdateProgress(story.id, story.pages.length, story.pages.length);
-    onClose();
+    setShowCelebration(true);
   };
 
   // Perform Gemini image illustration generation or fallback in real-time
@@ -797,6 +801,136 @@ export function BookViewer({
             </motion.div>
           </div>
         )}
+
+         {showCelebration && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
+             <motion.div
+               initial={{ opacity: 0, scale: 0.9, y: 30 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.9, y: 30 }}
+               transition={{ type: "spring", damping: 20 }}
+               className="relative bg-white rounded-3xl shadow-2xl p-7 max-w-md w-full border-4 border-indigo-200 overflow-hidden text-center z-50"
+             >
+               {/* Confetti Particle Burst */}
+               <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+                 {Array.from({ length: 45 }).map((_, i) => {
+                   const angle = (i / 45) * 360;
+                   const radius = 100 + Math.random() * 200;
+                   const x = Math.cos((angle * Math.PI) / 180) * radius;
+                   const y = Math.sin((angle * Math.PI) / 180) * radius - 155;
+                   const size = 6 + Math.random() * 12;
+                   const colors = ['#38bdf8', '#818cf8', '#f43f5e', '#fbbf24', '#34d399', '#a78bfa', '#fb7185', '#f472b6'];
+                   const color = colors[i % colors.length];
+                   const delay = Math.random() * 0.4;
+                   const duration = 1.6 + Math.random() * 1.4;
+                   return (
+                     <motion.div
+                       key={`confetti-${i}`}
+                       initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
+                       animate={{ x, y, scale: [0, 1.2, 1, 0.8, 0], opacity: [1, 1, 1, 0.5, 0] }}
+                       transition={{ delay, duration, ease: 'easeOut' }}
+                       style={{
+                         position: 'absolute',
+                         width: size,
+                         height: size,
+                         backgroundColor: color,
+                         borderRadius: Math.random() > 0.5 ? '50%' : '20%',
+                         top: '40%',
+                         left: '50%',
+                         transform: 'translate(-50%, -50%)',
+                       }}
+                     />
+                   );
+                 })}
+               </div>
+
+               {/* Trophy Badge */}
+               <motion.div
+                 initial={{ scale: 0.5, rotate: -20 }}
+                 animate={{ scale: [0.5, 1.1, 1], rotate: [0, -10, 0] }}
+                 transition={{ type: "spring", stiffness: 100, damping: 10, delay: 0.1 }}
+                 className="w-20 h-20 mx-auto bg-amber-100 border-2 border-amber-300 rounded-full flex items-center justify-center text-amber-600 mb-4 shadow-sm relative z-20"
+               >
+                 <Trophy className="w-10 h-10 text-amber-500" />
+               </motion.div>
+
+               <div className="relative z-20">
+                 <span className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black tracking-widest uppercase border border-emerald-200 mb-2.5 animate-bounce">
+                   👑 Quest Complete!
+                 </span>
+                 <h2 className="font-heading text-2xl font-black text-slate-800 tracking-tight leading-tight">
+                   Story Completed!
+                 </h2>
+                 <p className="text-slate-500 text-xs mt-1.5 px-2">
+                   You successfully read all pages of your customized adventure book:
+                 </p>
+
+                 {/* Adventure Stats Card */}
+                 <div className="bg-slate-50 border border-indigo-50 rounded-2xl p-4 my-5 text-left space-y-3">
+                   <div className="border-b border-indigo-100/50 pb-2.5">
+                     <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">Title of Book</span>
+                     <p className="font-heading font-black text-slate-800 text-sm leading-tight mt-0.5">
+                       {story.title}
+                     </p>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-3 pt-0.5">
+                     <div className="bg-white/80 p-2 rounded-xl border border-indigo-100/30">
+                       <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 block">Pages Read</span>
+                       <span className="font-heading font-black text-indigo-600 text-sm">
+                         📖 {story.pages.length} / {story.pages.length}
+                       </span>
+                     </div>
+                     <div className="bg-white/80 p-2 rounded-xl border border-indigo-100/30">
+                       <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 block">Paintings Painted</span>
+                       <span className="font-heading font-black text-emerald-600 text-sm">
+                         🎨 {story.pages.filter(p => p.illustrationUrl && p.illustrationUrl.trim() !== '').length} / {story.pages.length}
+                       </span>
+                     </div>
+                   </div>
+
+                   {story.heroName && (
+                     <div className="flex items-center gap-2 bg-indigo-50/40 p-2 rounded-xl border border-indigo-100/40">
+                       <span className="text-base">🦄</span>
+                       <p className="text-xs text-indigo-900 font-bold">
+                         Hero: <span className="font-black text-indigo-700">{story.heroName}</span> ({story.heroType})
+                       </p>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Encouraging message */}
+                 <div className="px-1 text-slate-500 text-xs font-bold leading-relaxed mb-6">
+                   🌈 Hooray! You've unlocked the magic inside this book. Let's find another fairytale to read together!
+                 </div>
+
+                 {/* Action Buttons */}
+                 <div className="grid grid-cols-2 gap-3">
+                   <button
+                     onClick={() => {
+                       setShowCelebration(false);
+                       setCurrentPageIdx(0);
+                       stopSpeech();
+                     }}
+                     className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-800 font-extrabold text-xs rounded-xl cursor-pointer transition flex items-center justify-center gap-1.5 border border-slate-200"
+                   >
+                     <RotateCcw className="w-3.5 h-3.5" />
+                     Read Again
+                   </button>
+                   <button
+                     onClick={() => {
+                       setShowCelebration(false);
+                       onClose();
+                     }}
+                     className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-extrabold text-xs rounded-xl cursor-pointer shadow-md transition flex items-center justify-center gap-1.5"
+                   >
+                     <span>Bookshelf 🏰</span>
+                   </button>
+                 </div>
+               </div>
+             </motion.div>
+           </div>
+         )}
       </AnimatePresence>
     </div>
   );
