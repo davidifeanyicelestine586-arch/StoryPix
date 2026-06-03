@@ -18,6 +18,8 @@ interface StorySelectorProps {
   recentStoryIds: string[];
   favoriteStoryIds?: string[];
   onToggleFavorite: (id: string, e: React.MouseEvent) => void;
+  activeFilter?: 'all' | 'favorites';
+  onFilterChange?: (filter: 'all' | 'favorites') => void;
 }
 
 function renderProgressCircle(story: Story, progress: { highestPageRead: number; isFinished: boolean }) {
@@ -104,8 +106,18 @@ export function StorySelector({
   recentStoryIds,
   favoriteStoryIds = [],
   onToggleFavorite,
+  activeFilter: externalFilter,
+  onFilterChange,
 }: StorySelectorProps) {
-  const [activeFilter, setActiveFilter] = React.useState<'all' | 'favorites'>('all');
+  const [localFilter, setLocalFilter] = React.useState<'all' | 'favorites'>('all');
+  const activeFilter = externalFilter !== undefined ? externalFilter : localFilter;
+  const setActiveFilter = (filter: 'all' | 'favorites') => {
+    if (onFilterChange) {
+      onFilterChange(filter);
+    } else {
+      setLocalFilter(filter);
+    }
+  };
 
   // Group categories
   const preloaded = stories.filter((s) => !s.isAiGenerated);

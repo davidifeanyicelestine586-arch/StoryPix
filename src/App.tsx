@@ -10,6 +10,8 @@ import { Story, StoryCreationConfig, StoryPage, ReadingProgress } from './types'
 import { StorySelector } from './components/StorySelector';
 import { StoryCreatorForm } from './components/StoryCreatorForm';
 import { BookViewer } from './components/BookViewer';
+import { StoryFooter } from './components/StoryFooter';
+import { StoryHeader } from './components/StoryHeader';
 import { Sparkles, Wand2, ShieldAlert, Heart } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'kids-story-illustrator-treasury';
@@ -39,6 +41,7 @@ export default function App() {
     charName?: string;
   } | null>(null);
   const [favoriteStoryIds, setFavoriteStoryIds] = useState<string[]>([]);
+  const [shelfFilter, setShelfFilter] = useState<'all' | 'favorites'>('all');
 
   // Parse share parameters on startup
   useEffect(() => {
@@ -434,46 +437,20 @@ export default function App() {
 
   return (
     <div id="ai-storybook-castle" className="min-h-screen bg-slate-50 flex flex-col justify-between font-sans text-slate-800">
-      {/* Playful Top Navbar */}
-      <header className="bg-white border-b-2 border-slate-100 py-4 px-6 sticky top-0 z-40 shadow-3xs">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div
-            onClick={() => {
-              if (!isGenerating) {
-                setActiveView('shelf');
-                setSelectedStory(null);
-              }
-            }}
-            className="flex items-center gap-2.5 cursor-pointer select-none"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-rose-500 flex items-center justify-center text-white font-black text-xl shadow-xs scale-100 hover:rotate-6 transition">
-              🪄
-            </div>
-            <div>
-              <h2 className="font-heading font-black text-slate-800 text-base md:text-lg leading-tight tracking-tight">
-                Magical Bookworm
-              </h2>
-              <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5">
-                AI Bedtime Companion
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {activeView === 'shelf' && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setActiveView('creator')}
-                className="flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 text-white font-black text-xs md:text-sm rounded-full shadow-md hover:bg-indigo-700 cursor-pointer transition"
-              >
-                <Wand2 className="w-4 h-4 text-yellow-200 animate-pulse" />
-                Spellbind Story
-              </motion.button>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Redesigned Premium Magical Navigation Header */}
+      <StoryHeader
+        activeView={activeView}
+        onChangeView={(view) => {
+          setActiveView(view);
+          setSelectedStory(null);
+        }}
+        stories={stories}
+        readingProgress={readingProgress}
+        favoriteStoryIds={favoriteStoryIds}
+        shelfFilter={shelfFilter}
+        onChangeShelfFilter={setShelfFilter}
+        isGenerating={isGenerating}
+      />
 
       {/* Main Body */}
       <main className="flex-1 py-8 relative">
@@ -499,6 +476,8 @@ export default function App() {
                 recentStoryIds={recentStoryIds}
                 favoriteStoryIds={favoriteStoryIds}
                 onToggleFavorite={handleToggleFavorite}
+                activeFilter={shelfFilter}
+                onFilterChange={setShelfFilter}
               />
             </motion.div>
           )}
@@ -604,15 +583,14 @@ export default function App() {
         )}
       </main>
 
-      {/* Cozy Footer */}
-      <footer className="bg-white border-t border-slate-100 py-6 text-center text-slate-400 text-xs">
-        <p className="flex items-center justify-center gap-1">
-          Made with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 animate-pulse" /> for creative kids everywhere.
-        </p>
-        <p className="text-[10px] mt-1 text-slate-300">
-          Powered by Gemini 3.5 & Imagen. All API operations secure & server-side.
-        </p>
-      </footer>
+      {/* Cozy Interactive Footer */}
+      <StoryFooter 
+        onNavigate={setActiveView} 
+        onSelectFavoriteFilter={() => {
+          setActiveView('shelf');
+          setShelfFilter('favorites');
+        }} 
+      />
     </div>
   );
 }
