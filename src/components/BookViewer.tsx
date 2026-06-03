@@ -22,7 +22,8 @@ import {
   Image as ImageIcon,
   Share2,
   Copy,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 
 interface BookViewerProps {
@@ -73,6 +74,7 @@ export function BookViewer({
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const currentPage: StoryPage = story.pages[currentPageIdx] || story.pages[0];
 
@@ -115,7 +117,7 @@ export function BookViewer({
   // Update reading progress dynamically as page changes
   useEffect(() => {
     onUpdateProgress(story.id, currentPageIdx + 1, story.pages.length);
-  }, [currentPageIdx, story.id, story.pages.length, onUpdateProgress]);
+  }, [currentPageIdx, story.id, story.pages.length]);
 
   // Clean-up speech synthesize when flipping pages or parting
   useEffect(() => {
@@ -174,6 +176,30 @@ export function BookViewer({
       setPaintingError(e.message || 'The wizard ran out of inks. Try again!');
     } finally {
       setIsPainting(false);
+    }
+  };
+
+  // Safe download of the custom masterpiece
+  const handleDownloadIllustration = async () => {
+    if (!currentPage.illustrationUrl) return;
+    setIsDownloading(true);
+    try {
+      const response = await fetch(currentPage.illustrationUrl, { referrerPolicy: 'no-referrer' });
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const cleanTitle = story.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      link.download = `storybook-${cleanTitle}-page-${currentPageIdx + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Direct download failed, opening image in a secure new tab:', error);
+      window.open(currentPage.illustrationUrl, '_blank');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -350,8 +376,8 @@ export function BookViewer({
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
-                  {/* Share button overlay */}
-                  <div className="absolute top-3 right-3 z-30">
+                  {/* Share & Download button overlay */}
+                  <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -364,6 +390,18 @@ export function BookViewer({
                     >
                       <Share2 className="w-3.5 h-3.5 text-indigo-600 font-black" />
                       <span>Share Art</span>
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleDownloadIllustration}
+                      disabled={isDownloading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/95 text-emerald-700 hover:text-emerald-800 disabled:text-slate-400 font-extrabold text-xs rounded-full shadow-md backdrop-blur-xs select-none cursor-pointer border border-emerald-100 transition duration-150 disabled:cursor-not-allowed"
+                      title="Save this illustration to your device!"
+                    >
+                      <Download className={`w-3.5 h-3.5 text-emerald-600 font-black ${isDownloading ? 'animate-bounce' : ''}`} />
+                      <span>{isDownloading ? 'Saving...' : 'Save Art'}</span>
                     </motion.button>
                   </div>
                 </React.Fragment>

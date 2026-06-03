@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PRELOADED_STORIES } from './data/preloadedStories';
 import { Story, StoryCreationConfig, StoryPage, ReadingProgress } from './types';
@@ -188,11 +188,16 @@ export default function App() {
   };
 
   // Callback to update reading progress
-  const handleUpdateProgress = (storyId: string, pageNumber: number, totalPages: number) => {
+  const handleUpdateProgress = useCallback((storyId: string, pageNumber: number, totalPages: number) => {
     setReadingProgress((prev) => {
       const current = prev[storyId] || { highestPageRead: 0, isFinished: false };
       const updatedHighest = Math.max(current.highestPageRead, pageNumber);
       const isNowFinished = current.isFinished || updatedHighest >= totalPages;
+
+      // Avoid writing and triggering state updates if progress didn't actually increase/change
+      if (current.highestPageRead === updatedHighest && current.isFinished === isNowFinished) {
+        return prev;
+      }
 
       const newProgress = {
         ...prev,
@@ -210,7 +215,7 @@ export default function App() {
 
       return newProgress;
     });
-  };
+  }, []);
 
   // Handle Spellbind submission: call backend API proxy
   const handleCreateCustomStory = async (config: StoryCreationConfig) => {
