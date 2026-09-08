@@ -1,20 +1,35 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# StoryPix
 
-# Run and deploy your AI Studio app
+StoryPix is an experimental AI-assisted application project exploring image/story generation workflows.
 
-This contains everything you need to run your app locally.
+## Portfolio context
 
-View your app in AI Studio: https://ai.studio/apps/6c8da6e5-bd65-47a0-b9f9-bc3f8a843b21
+This is a supporting experimental project in David Ifeanyi's development history. It is not presented as a finished production product. The repository currently contains an AI Studio-generated application starting point and local development instructions.
 
-## Run Locally
+## Run locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisite:** Node.js
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+
+```bash
+npm install
+```
+
+2. Configure the required provider API key through local environment configuration. Do not commit `.env.local` or credentials.
+
+3. Start the development server:
+
+```bash
+npm run dev
+```
+
+## Security
+
+Keep API keys and other credentials outside version control. Use environment variables for local and deployment configuration.
+
+## Status
+
+**Status:** Supporting / experimental project.
+
+The repository should be evaluated from the implementation currently present in the source tree; planned AI capabilities are not treated as completed functionality.
